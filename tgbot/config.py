@@ -23,11 +23,12 @@ class TgBot:
     token: str
     admin_ids: list[int]
     use_redis: bool
+    admin_group: str
 
 
 @dataclass
 class Miscellaneous:
-    admin_group: str
+    pass
 
 
 @dataclass
@@ -47,6 +48,7 @@ def load_config(path: str = None):
             token=env.str("BOT_TOKEN"),
             admin_ids=list(map(int, env.list("ADMINS"))),
             use_redis=env.bool("USE_REDIS"),
+            admin_group=env.str("ADMIN_GROUP")
         ),
         db=DbConfig(
             host=env.str('DB_HOST'),
@@ -59,7 +61,5 @@ def load_config(path: str = None):
             port=env.str('REDIS_PORT'),
             db=env.str('REDIS_DB')
         ),
-        misc=Miscellaneous(
-            admin_group=env.str('ADMIN_GROUP')
-        )
+        misc=Miscellaneous()
     )
