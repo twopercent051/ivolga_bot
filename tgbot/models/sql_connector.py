@@ -1,5 +1,5 @@
 from sqlalchemy import MetaData, inspect, Column, String, insert, select, Integer, Text, Boolean, Time, \
-    DateTime, update, TIMESTAMP
+    DateTime, update, TIMESTAMP, delete
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import sessionmaker, as_declarative
@@ -48,9 +48,11 @@ class TicketsDB(Base):
 
     id = Column(Integer, nullable=False, autoincrement=True, primary_key=True)
     user_id = Column(String, nullable=False)
+    username = Column(String, nullable=True)
     text = Column(Text, nullable=False)
     dtime = Column(TIMESTAMP, nullable=False, server_default=UtcNow())
     is_finished = Column(Boolean, nullable=False, server_default="false")
+    ticket_hash = Column(String, nullable=True)
 
 
 class TextsDB(Base):
@@ -58,6 +60,7 @@ class TextsDB(Base):
     __tablename__ = "texts"
 
     id = Column(Integer, nullable=False, primary_key=True, autoincrement=True)
+    is_rebound = Column(Boolean, nullable=True)
     parent = Column(Integer, nullable=True)
     button = Column(String, nullable=True)
     text = Column(Text, nullable=True)
@@ -99,9 +102,23 @@ class BaseDAO:
             await session.commit()
             return result.mappings().one_or_none()
 
+    @classmethod
+    async def delete(cls, **data):
+        async with async_session_maker() as session:
+            stmt = delete(cls.model).filter_by(**data)
+            await session.execute(stmt)
+            await session.commit()
+
 
 class UsersDAO(BaseDAO):
     model = UsersDB
+
+    @classmethod
+    async def get_categories(cls) -> list:
+        async with async_session_maker() as session:
+            query = select(cls.model.category).distinct()
+            result = await session.execute(query)
+            return result.mappings().all()
 
 
 class TextsDAO(BaseDAO):
@@ -110,7 +127,7 @@ class TextsDAO(BaseDAO):
     @classmethod
     async def get_order_by_parents(cls) -> list:
         async with async_session_maker() as session:
-            query = select(cls.model.__table__.columns).order_by(TextsDB.parent.asc())
+            query = select(cls.model.__table__.columns).order_by(TextsDB.parent.asc()).filter_by(is_rebound=False)
             result = await session.execute(query)
             return result.mappings().all()
 
@@ -118,5 +135,34 @@ class TextsDAO(BaseDAO):
     async def update(cls, button_id: int, **data):
         async with async_session_maker() as session:
             stmt = update(cls.model).values(**data).filter_by(id=button_id)
+            await session.execute(stmt)
+            await session.commit()
+
+    @classmethod
+    async def update_rebound(cls, text: str):
+        async with async_session_maker() as session:
+            stmt = update(cls.model).values(text=text).filter_by(is_rebound=True)
+            await session.execute(stmt)
+            await session.commit()
+
+
+class WorktimeDAO(BaseDAO):
+    model = WorktimeDB
+
+    @classmethod
+    async def update(cls, day: str, **data):
+        async with async_session_maker() as session:
+            stmt = update(cls.model).values(**data).filter_by(day=day)
+            await session.execute(stmt)
+            await session.commit()
+
+
+class TicketsDAO(BaseDAO):
+    model = TicketsDB
+
+    @classmethod
+    async def update(cls, ticket_hash: str, **data):
+        async with async_session_maker() as session:
+            stmt = update(cls.model).values(**data).filter_by(ticket_hash=ticket_hash)
             await session.execute(stmt)
             await session.commit()

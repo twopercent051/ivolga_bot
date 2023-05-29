@@ -1,23 +1,9 @@
-import asyncio
-from aiogram import Bot, Dispatcher
-from tgbot.handlers import admin, echo, user
+from datetime import datetime
 
+import pytz
 
-# Запуск бота
-async def main():
-    bot = Bot(token="5921117513:AAGbrJQA5qVqysf3OxR-1j8nF-QE9LzJWq0")
-    dp = Dispatcher()
+day = datetime.today().weekday()
 
-    dp.include_routers(admin.router, echo.router, user.router)
+my_date = datetime.now(pytz.timezone('Europe/Moscow')).time()
 
-    # Альтернативный вариант регистрации роутеров по одному на строку
-    # dp.include_router(questions.router)
-    # dp.include_router(different_types.router)
-
-    # Запускаем бота и пропускаем все накопленные входящие
-    # Да, этот метод можно вызвать даже если у вас поллинг
-    await dp.start_polling(bot)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+print(my_date)
