@@ -62,7 +62,7 @@ class TextsDB(Base):
     __tablename__ = "texts"
 
     id = Column(Integer, nullable=False, primary_key=True, autoincrement=True)
-    is_rebound = Column(Boolean, nullable=True)
+    type_message = Column(String, nullable=False)
     parent = Column(Integer, nullable=True)
     button = Column(String, nullable=True)
     text = Column(Text, nullable=True)
@@ -129,7 +129,8 @@ class TextsDAO(BaseDAO):
     @classmethod
     async def get_order_by_parents(cls) -> list:
         async with async_session_maker() as session:
-            query = select(cls.model.__table__.columns).order_by(TextsDB.parent.asc()).filter_by(is_rebound=False)
+            query = select(cls.model.__table__.columns).order_by(TextsDB.parent.asc()).\
+                filter_by(type_message="question")
             result = await session.execute(query)
             return result.mappings().all()
 
@@ -141,9 +142,9 @@ class TextsDAO(BaseDAO):
             await session.commit()
 
     @classmethod
-    async def update_rebound(cls, text: str):
+    async def update_msg_text(cls, type_message: str, text: str):
         async with async_session_maker() as session:
-            stmt = update(cls.model).values(text=text).filter_by(is_rebound=True)
+            stmt = update(cls.model).values(text=text).filter_by(type_message=type_message)
             await session.execute(stmt)
             await session.commit()
 

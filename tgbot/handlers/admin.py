@@ -88,7 +88,7 @@ async def get_text(message: Message, state: FSMContext):
     parent_id = state_data["parent_id"]
     button_text = state_data["button_text"]
     await TextsDAO.create(
-        is_rebound=False,
+        type_message="question",
         parent=parent_id,
         button=button_text,
         text=value
@@ -136,9 +136,9 @@ async def update_button(message: Message, state: FSMContext):
     text = "Вопрос обновлён"
     kb = inline_kb.home_kb()
     if state_data["subject"] == "button":
-        await TextsDAO.update(button_id=button_id, button=message.html_text)
+        await TextsDAO.update(button_id=button_id, button=message.html_text, type_message="question")
     else:
-        await TextsDAO.update(button_id=button_id, text=message.html_text)
+        await TextsDAO.update(button_id=button_id, text=message.html_text, type_message="question")
     await state.set_state(AdminFSM.home)
     await message.answer(text, reply_markup=kb)
 
@@ -158,6 +158,19 @@ async def delete_button(callback: CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback.id)
 
 
+@router.callback_query(F.data.split(":")[0] == "type_msg")
+async def edit_greeting(callback: CallbackQuery, state: FSMContext):
+    type_message = callback.data.split(":")[1]
+    msg_text_sql = await TextsDAO.get_one_or_none(type_message=type_message)
+    msg_text = msg_text_sql["text"] if msg_text_sql else "Текст отсутствует"
+    text = f"Сейчас текст такой:\n{20 * '*'}\n{msg_text}\n{20 * '*'}\nВведите новый текст"
+    kb = inline_kb.home_kb()
+    await state.update_data(type_message=type_message)
+    await state.set_state(AdminFSM.edit_message)
+    await callback.message.answer(text, reply_markup=kb)
+    await bot.answer_callback_query(callback.id)
+
+
 @router.callback_query(F.data.split(":")[0] == "rebound")
 async def edit_rebound(callback: CallbackQuery, state: FSMContext):
     chapter = callback.data.split(":")[1]
@@ -165,11 +178,12 @@ async def edit_rebound(callback: CallbackQuery, state: FSMContext):
         text = "Что редактируем?"
         kb = inline_kb.rebound_menu()
     elif chapter == "text":
-        rebound_text_sql = await TextsDAO.get_one_or_none(is_rebound=True)
+        rebound_text_sql = await TextsDAO.get_one_or_none(type_message="rebound")
         rebound_text = rebound_text_sql["text"] if rebound_text_sql else "Текст отсутствует"
-        text = f"Сейчас текст отбойного сообщения такой:\n{20 * '*'}\n{rebound_text}\n{20 * '*'}\nВведите новый текст"
+        text = f"Сейчас текст отбойника такой:\n{20 * '*'}\n{rebound_text}\n{20 * '*'}\nВведите новый текст"
         kb = inline_kb.home_kb()
-        await state.set_state(AdminFSM.rebound_text)
+        await state.set_state(AdminFSM.edit_message)
+        await state.update_data(type_message="rebound")
     else:
         weekdays = {
             0: "Пн",
@@ -198,16 +212,18 @@ async def edit_rebound(callback: CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback.id)
 
 
-@router.message(F.text, AdminFSM.rebound_text)
+@router.message(F.text, AdminFSM.edit_message)
 async def edit_rebound_text(message: Message, state: FSMContext):
-    text = "Текст отбойного сообщения обновлён"
+    text = "Текст сообщения обновлён"
     kb = inline_kb.home_kb()
-    rebound_text = message.html_text
-    rebound_text_sql = await TextsDAO.get_one_or_none(is_rebound=True)
-    if rebound_text_sql:
-        await TextsDAO.update_rebound(text=rebound_text)
+    state_data = await state.get_data()
+    type_message = state_data["type_message"]
+    msg_text = message.html_text
+    msg_text_sql = await TextsDAO.get_one_or_none(type_message=type_message)
+    if msg_text_sql:
+        await TextsDAO.update_msg_text(text=msg_text, type_message=type_message)
     else:
-        await TextsDAO.create(text=rebound_text, is_rebound=True)
+        await TextsDAO.create(text=msg_text, type_message=type_message)
     await state.set_state(AdminFSM.home)
     await message.answer(text, reply_markup=kb)
 

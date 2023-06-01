@@ -19,7 +19,11 @@ router = Router()
 
 @router.message(Command('start'))
 async def user_start(message: Message):
-    text = "ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ. Вы хотите получать рассылку?"
+    text_sql = await TextsDAO.get_one_or_none(type_message="greeting")
+    if text_sql:
+        text = text_sql["text"]
+    else:
+        text = "ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ. ВЫ ХОТИТЕ ПОЛУЧАТЬ РАССЫЛКУ?"
     kb = UserInlineKeyboard.mailing_kb()
     await message.answer(text, reply_markup=kb)
 
@@ -41,8 +45,12 @@ async def mailing_access(callback: CallbackQuery, state: FSMContext):
         )
     except IntegrityError:
         pass
-    polling_list = await TextsDAO.get_many(parent=0, is_rebound=False)
-    text = "ВЫБЕРИТЕ ИНТЕРЕСУЮЩИЙ ВОПРОС"
+    polling_list = await TextsDAO.get_many(parent=0, type_message="question")
+    text_sql = await TextsDAO.get_one_or_none(type_message="choose_question")
+    if text_sql:
+        text = text_sql["text"]
+    else:
+        text = "ВЫБЕРИТЕ ИНТЕРЕСУЮЩИЙ ВОПРОС"
     kb = UserInlineKeyboard.parent_polling_kb(polling_list=polling_list)
     await state.set_state(UserFSM.home)
     await callback.message.answer(text, reply_markup=kb)
@@ -53,14 +61,18 @@ async def mailing_access(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.split(":")[0] == "back")
 async def question_child(callback: CallbackQuery):
     button_id = int(callback.data.split(":")[1])
-    polling_list = await TextsDAO.get_many(parent=button_id, is_rebound=False)
+    polling_list = await TextsDAO.get_many(parent=button_id, type_message="question")
     text_sql = await TextsDAO.get_one_or_none(id=button_id)
     if text_sql:
         parent_id = text_sql["parent"]
         text = text_sql["text"]
         kb = UserInlineKeyboard.child_polling_kb(polling_list=polling_list, parent_id=parent_id)
     else:
-        text = "ВЫБЕРИТЕ ИНТЕРЕСУЮЩИЙ ВОПРОС"
+        text_sql = await TextsDAO.get_one_or_none(type_message="choose_question")
+        if text_sql:
+            text = text_sql["text"]
+        else:
+            text = "ВЫБЕРИТЕ ИНТЕРЕСУЮЩИЙ ВОПРОС"
         kb = UserInlineKeyboard.parent_polling_kb(polling_list=polling_list)
     await callback.message.answer(text, reply_markup=kb)
     await bot.answer_callback_query(callback.id)
@@ -68,7 +80,11 @@ async def question_child(callback: CallbackQuery):
 
 @router.callback_query(F.data.split(":")[0] == "dialog")
 async def dialog(callback: CallbackQuery, state: FSMContext):
-    text = "ОСТАВЬТЕ СВОЁ ОБРАЩЕНИЕ"
+    text_sql = await TextsDAO.get_one_or_none(type_message="leave_ticket")
+    if text_sql:
+        text = text_sql["text"]
+    else:
+        text = "ОСТАВЬТЕ СВОЁ ОБРАЩЕНИЕ"
     kb = UserInlineKeyboard.home_kb()
     await state.set_state(UserFSM.dialog)
     await callback.message.answer(text, reply_markup=kb)
@@ -83,15 +99,19 @@ async def dialog(message: Message, state: FSMContext):
     if worktime:
         now = datetime.now(pytz.timezone('Europe/Moscow')).time()
         if worktime["start"] < now < worktime["finish"]:
-            user_text = "МЫ ПОЛУЧИЛИ ВАШЕ СООБЩЕНИЕ"
+            text_sql = await TextsDAO.get_one_or_none(type_message="thank_you")
+            if text_sql:
+                user_text = text_sql["text"]
+            else:
+                user_text = "МЫ ПОЛУЧИЛИ ВАШЕ СООБЩЕНИЕ"
         else:
-            text_sql = await TextsDAO.get_one_or_none(is_rebound=True)
+            text_sql = await TextsDAO.get_one_or_none(type_message="rebound")
             if text_sql:
                 user_text = text_sql["text"]
             else:
                 user_text = "СЕЙЧАС МЫ НЕ РАБОТАЕМ, ОТВЕТИМ ПРИ ПЕРВОЙ ЖЕ ВОЗМОЖНОСТИ"
     else:
-        text_sql = await TextsDAO.get_one_or_none(is_rebound=True)
+        text_sql = await TextsDAO.get_one_or_none(type_message="rebound")
         if text_sql:
             user_text = text_sql["text"]
         else:

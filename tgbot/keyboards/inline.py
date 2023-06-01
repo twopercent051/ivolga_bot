@@ -33,10 +33,14 @@ class AdminInlineKeyboard(InlineKeyboardMarkup):
             clb_text = button["button"] if button["button"] else button["id"]
             keyboard.append([InlineKeyboardButton(text=clb_text, callback_data=f"{action}:{button['id']}")])
         if is_main_menu:
-            keyboard.append([InlineKeyboardButton(text="Добавить вопрос", callback_data="add_button")])
-            keyboard.append([InlineKeyboardButton(text="Редактура отбойного сообщения", callback_data="rebound:start")])
+            keyboard.append([InlineKeyboardButton(text="➕ Добавить вопрос", callback_data="add_button")])
+            keyboard.append([InlineKeyboardButton(text="🙋 Приветствие", callback_data="type_msg:greeting")])
+            keyboard.append([InlineKeyboardButton(text="❔ Выберите вопрос", callback_data="type_msg:choose_question")])
+            keyboard.append([InlineKeyboardButton(text="📄 Оставьте обращение", callback_data="type_msg:leave_ticket")])
+            keyboard.append([InlineKeyboardButton(text="🛠 Мы работаем", callback_data="type_msg:thank_you")])
+            keyboard.append([InlineKeyboardButton(text="🛏 Мы не работаем", callback_data="rebound:start")])
         else:
-            keyboard.append([InlineKeyboardButton(text="Это родительский вопрос", callback_data="parent_id:0")])
+            keyboard.append([InlineKeyboardButton(text="👨‍👦‍👦 Это родительский вопрос", callback_data="parent_id:0")])
         keyboard.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="home")])
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard)
         return keyboard
