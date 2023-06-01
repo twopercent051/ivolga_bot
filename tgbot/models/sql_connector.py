@@ -1,5 +1,5 @@
 from sqlalchemy import MetaData, inspect, Column, String, insert, select, Integer, Text, Boolean, Time, \
-    DateTime, update, TIMESTAMP, delete
+    DateTime, update, TIMESTAMP, delete, func
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import sessionmaker, as_declarative
@@ -36,8 +36,10 @@ class UsersDB(Base):
     __tablename__ = "users"
 
     id = Column(Integer, nullable=False, autoincrement=True, primary_key=True)
-    user_id = Column(String, nullable=False)
+    user_id = Column(String, nullable=False, unique=True)
     username = Column(String, nullable=True)
+    name = Column(String, nullable=True)
+    add_datetime = Column(TIMESTAMP, nullable=False, server_default=func.now())
     mailing = Column(Boolean, nullable=False, server_default="false")
     category = Column(String, nullable=True)  # требует уточнения
 

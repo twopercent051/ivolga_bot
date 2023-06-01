@@ -1,22 +1,26 @@
+import os
 from datetime import datetime, timedelta
 
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.filters import Command
 from aiogram import F, Router
 from aiogram.filters.state import StateFilter
 from aiogram.utils.markdown import hcode
+from sqlalchemy.exc import IntegrityError
 
-from create_bot import bot
+from create_bot import bot, config
 from tgbot.filters.admin import AdminFilter
 from tgbot.keyboards.inline import AdminInlineKeyboard as inline_kb
 from tgbot.misc.states import AdminFSM
+from tgbot.misc.xlsx_load import create_xlsx, get_xlsx
 from tgbot.models.sql_connector import TextsDAO, WorktimeDAO, TicketsDAO, UsersDAO
 
 router = Router()
 router.message.filter(AdminFilter())
 router.callback_query.filter(AdminFilter())
+admin_group = config.tg_bot.admin_group
 
 
 @router.message(Command('start'), StateFilter('*'))
@@ -249,7 +253,7 @@ async def edit_rebound_worktime(message: Message, state: FSMContext):
             text.append("Неправильный формат")
             break
     await state.set_state(AdminFSM.home)
-    await message.answer(text, reply_markup=kb)
+    await message.answer("\n".join(text), reply_markup=kb)
 
 
 @router.callback_query(F.data.split(":")[0] == "dialog")
@@ -321,32 +325,108 @@ async def mailing(callback: CallbackQuery, state: FSMContext):
         category_list = await UsersDAO.get_categories()
         text = "Выберите категорию для рассылки"
         kb = inline_kb.categories_kb(category_list=category_list)
+    elif category == "accept":
+        state_data = await state.get_data()
+        category = state_data["category"]
+        user_text = state_data["user_text"]
+        user_button_text = state_data["user_button_text"]
+        user_button_url = state_data["user_button_url"]
+        if category == "all":
+            user_list = await UsersDAO.get_many(mailing=True)
+        else:
+            user_list = await UsersDAO.get_many(mailing=True, category=category)
+        counter = 0
+        for user in user_list:
+            user_id = user["user_id"]
+            try:
+                if user_button_text:
+                    user_kb = inline_kb.url_mailing_kb(text=user_button_text, url=user_button_url)
+                else:
+                    user_kb = None
+                await bot.send_message(chat_id=user_id, text=user_text, reply_markup=user_kb)
+                counter += 1
+            except TelegramBadRequest:
+                pass
+        text = f"Разослали {counter} из {len(user_list)} пользователей"
+        kb = inline_kb.home_kb()
+        await state.set_state(AdminFSM.home)
     else:
-        text = "Введите сообщение. Оно будет отправлено всем пользователям"
+        text = "Введите сообщение. Оно будет отправлено всем пользователям. Чтобы вставить инлайн-клавишу со ссылкой" \
+               ", введите текст рассылки в формате:\n\n<i>Тект сообщения\n% Текст на кнопке & example.com</i>"
         kb = inline_kb.home_kb()
         await state.update_data(category=category)
         await state.set_state(AdminFSM.mailing)
-    await callback.message.answer(text, reply_markup=kb)
+    await callback.message.answer(text, reply_markup=kb, disable_web_page_preview=True)
     await bot.answer_callback_query(callback.id)
 
 
 @router.message(F.text, AdminFSM.mailing)
 async def mailing(message: Message, state: FSMContext):
-    state_data = await state.get_data()
-    category = state_data["category"]
-    if category == "all":
-        user_list = await UsersDAO.get_many(mailing=True)
+    if len(message.text.split("%")) > 1:
+        user_text = message.html_text.split("%")[0].strip()
+        user_button_text = message.text.split("%")[1].split("&")[0].strip()
+        user_button_url = message.text.split("%")[1].split("&")[1].strip()
+        user_kb = inline_kb.url_mailing_kb(text=user_button_text, url=user_button_url)
     else:
-        user_list = await UsersDAO.get_many(mailing=True, category=category)
+        user_text = message.html_text
+        user_button_text = None
+        user_button_url = None
+        user_kb = None
+    admin_text = "Так будет видеть сообщение пользователь. Подтверждаете отправку?"
+    admin_kb = inline_kb.mailing_accept_kb()
+    await state.update_data(
+        user_text=user_text,
+        user_button_text=user_button_text,
+        user_button_url=user_button_url
+    )
+    try:
+        await message.answer(user_text, reply_markup=user_kb)
+        await message.answer(admin_text, reply_markup=admin_kb)
+        await state.set_state(AdminFSM.home)
+    except TelegramBadRequest:
+        text = "Вам необходимо указать ссылку после знака &"
+        await message.answer(text)
+
+
+@router.callback_query(F.data == "download")
+async def download(callback: CallbackQuery):
+    user_list = await UsersDAO.get_many(mailing=True)
+    await create_xlsx(user_list=user_list)
+    file = FSInputFile(path=f'{os.getcwd()}/downloaded_db.xlsx', filename=f"downloaded_db.xlsx")
+    kb = inline_kb.home_kb()
+    await bot.send_document(chat_id=admin_group, document=file, reply_markup=kb)
+    os.remove(f'{os.getcwd()}/downloaded_db.csv')
+    await bot.answer_callback_query(callback.id)
+
+
+@router.callback_query(F.data == "upload")
+async def upload(callback: CallbackQuery, state: FSMContext):
+    text = "Загрузите файл в формате XLSX"
+    kb = inline_kb.home_kb()
+    await state.set_state(AdminFSM.upload)
+    await callback.message.answer(text, reply_markup=kb)
+    await bot.answer_callback_query(callback.id)
+
+
+@router.message(F.document, AdminFSM.upload)
+async def upload(message: Message, state: FSMContext):
+    document = message.document
+    await bot.download(document, destination=f"{os.getcwd()}/uploaded.xlsx")
+    user_list = await get_xlsx()
     counter = 0
     for user in user_list:
-        user_id = user["user_id"]
         try:
-            await bot.send_message(chat_id=user_id, text=message.html_text)
+            await UsersDAO.create(
+                user_id=user["user_id"],
+                name=user["name"],
+                add_datetime=user["add_datetime"],
+                mailing=True
+            )
             counter += 1
-        except TelegramBadRequest:
+        except IntegrityError:
             pass
-    admin_text = f"Разослали {counter} из {len(user_list)} пользователей"
+    text = f"Добавили в базу данных <i>{counter}</i> записей. <i>{len(user_list) - counter}</i> были добавлены ранее"
     kb = inline_kb.home_kb()
     await state.set_state(AdminFSM.home)
-    await message.answer(admin_text, reply_markup=kb)
+    await message.answer(text, reply_markup=kb)
+

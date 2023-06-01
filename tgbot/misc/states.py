@@ -10,6 +10,7 @@ class AdminFSM(StatesGroup):
     rebound_worktime = State()
     dialog = State()
     mailing = State()
+    upload = State()
 
 
 class UserFSM(StatesGroup):

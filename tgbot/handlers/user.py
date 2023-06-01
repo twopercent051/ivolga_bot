@@ -6,6 +6,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
+from sqlalchemy.exc import IntegrityError
 
 from create_bot import bot, config
 from tgbot.keyboards.inline import UserInlineKeyboard
@@ -26,13 +27,20 @@ async def user_start(message: Message):
 @router.callback_query(F.data.split(":")[0] == "mailing")
 async def mailing_access(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    is_user = await UsersDAO.get_one_or_none(user_id=str(user_id))
-    if not is_user:
-        if callback.data.split(":")[1] == "yes":
-            mailing = True
-        else:
-            mailing = False
-        await UsersDAO.create(user_id=str(user_id), username=callback.from_user.username, mailing=mailing)
+    name = f"{callback.from_user.first_name} {callback.from_user.last_name}"
+    if callback.data.split(":")[1] == "yes":
+        mailing = True
+    else:
+        mailing = False
+    try:
+        await UsersDAO.create(
+            user_id=str(user_id),
+            username=str(callback.from_user.username),
+            name=str(name),
+            mailing=mailing
+        )
+    except IntegrityError:
+        pass
     polling_list = await TextsDAO.get_many(parent=0, is_rebound=False)
     text = "ВЫБЕРИТЕ ИНТЕРЕСУЮЩИЙ ВОПРОС"
     kb = UserInlineKeyboard.parent_polling_kb(polling_list=polling_list)
@@ -78,10 +86,16 @@ async def dialog(message: Message, state: FSMContext):
             user_text = "МЫ ПОЛУЧИЛИ ВАШЕ СООБЩЕНИЕ"
         else:
             text_sql = await TextsDAO.get_one_or_none(is_rebound=True)
-            user_text = text_sql["text"]
+            if text_sql:
+                user_text = text_sql["text"]
+            else:
+                user_text = "СЕЙЧАС МЫ НЕ РАБОТАЕМ, ОТВЕТИМ ПРИ ПЕРВОЙ ЖЕ ВОЗМОЖНОСТИ"
     else:
         text_sql = await TextsDAO.get_one_or_none(is_rebound=True)
-        user_text = text_sql["text"]
+        if text_sql:
+            user_text = text_sql["text"]
+        else:
+            user_text = "СЕЙЧАС МЫ НЕ РАБОТАЕМ, ОТВЕТИМ ПРИ ПЕРВОЙ ЖЕ ВОЗМОЖНОСТИ"
     ticket_hash = f"{user_id}_{int(time.time())}"
     await TicketsDAO.create(user_id=user_id, username=message.from_user.username, text=user_text,
                             ticket_hash=ticket_hash)

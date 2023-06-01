@@ -18,8 +18,8 @@ class AdminInlineKeyboard(InlineKeyboardMarkup):
             [InlineKeyboardButton(text='Неотвеченные сообщения от клиентов', callback_data='tickets')],
             [InlineKeyboardButton(text='Статистика', callback_data='statistics')],
             [InlineKeyboardButton(text='Редактура текстов', callback_data='edition')],
-            [InlineKeyboardButton(text='Выгрузка клиентов в CSV', callback_data='download')],
-            [InlineKeyboardButton(text='Загрузка клиентов из CSV', callback_data='upload')],
+            [InlineKeyboardButton(text='Выгрузка клиентов в XLSX', callback_data='download')],
+            [InlineKeyboardButton(text='Загрузка клиентов из XLSX', callback_data='upload')],
             [InlineKeyboardButton(text='Рассылка', callback_data='mailing:start')],
         ]
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -105,6 +105,25 @@ class AdminInlineKeyboard(InlineKeyboardMarkup):
                                                       callback_data=f"mailing:{category['category']}")])
         keyboard.append([InlineKeyboardButton(text="Все пользователи", callback_data=f"mailing:all")])
         keyboard.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="home")])
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        return keyboard
+
+    @classmethod
+    def url_mailing_kb(cls, text: str, url: str) -> InlineKeyboardMarkup:
+        keyboard = [
+            [InlineKeyboardButton(text=text, url=url)],
+        ]
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        return keyboard
+
+    @classmethod
+    def mailing_accept_kb(cls) -> InlineKeyboardMarkup:
+        keyboard = [
+            [
+                InlineKeyboardButton(text="✅ Подтверждаю", callback_data="mailing:accept"),
+                InlineKeyboardButton(text="Нет, надо исправить", callback_data="mailing:start"),
+            ],
+        ]
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard)
         return keyboard
 

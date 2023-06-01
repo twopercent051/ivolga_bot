@@ -1,9 +1,12 @@
-from datetime import datetime
+import re
 
-import pytz
+regex = r"(?P<domain>\w+\.\w{2,3})"
 
-day = datetime.today().weekday()
+test_str = ("Hello, pythonworld.ru!\n"
+  "Checking гто.рф\n"
+  "microsoft.com")
 
-my_date = datetime.now(pytz.timezone('Europe/Moscow')).time()
+matches = re.finditer(regex, test_str, re.MULTILINE)
 
-print(my_date)
+for r in matches:
+    print(r)
