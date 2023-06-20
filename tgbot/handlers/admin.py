@@ -311,7 +311,7 @@ async def tickets(callback: CallbackQuery):
     ticket_id = int(callback.data.split(":")[1])
     ticket = await TicketsDAO.get_one_or_none(id=ticket_id)
     if ticket:
-        ticket_date = (ticket["create_timestamp"] + timedelta(hours=3)).strftime('%d-%m-%Y %H:%M')
+        ticket_date = (ticket["dtime"] + timedelta(hours=3)).strftime('%d-%m-%Y %H:%M')
         text = [f"Обращение # {ticket_id} от {ticket_date}\n"]
         if ticket["username"]:
             text.append(f'@{ticket["username"]}')
