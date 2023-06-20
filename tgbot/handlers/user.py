@@ -117,7 +117,7 @@ async def dialog(message: Message, state: FSMContext):
         else:
             user_text = "СЕЙЧАС МЫ НЕ РАБОТАЕМ, ОТВЕТИМ ПРИ ПЕРВОЙ ЖЕ ВОЗМОЖНОСТИ"
     ticket_hash = f"{user_id}_{int(time.time())}"
-    await TicketsDAO.create(user_id=user_id, username=message.from_user.username, text=user_text,
+    await TicketsDAO.create(user_id=user_id, username=message.from_user.username, text=message.html_text,
                             ticket_hash=ticket_hash)
     username = f"@{message.from_user.username}" if message.from_user.username else ""
     admin_text = f"⚠️ Обращение от клиента {username} \n\n{message.html_text}"

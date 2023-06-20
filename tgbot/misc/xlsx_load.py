@@ -31,7 +31,8 @@ async def get_xlsx() -> list:
             name=str(row[0].value),
             user_id=str(row[1].value),
             # add_datetime=datetime.strptime(row[2].value, "%d.%m.%Y %H:%M")
-            add_datetime=row[2].value.date()
+            add_datetime=row[2].value.date(),
+            mailing=True
         )
         user_list.append(data)
     return user_list

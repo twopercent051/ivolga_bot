@@ -308,7 +308,7 @@ async def tickets(callback: CallbackQuery):
 
 @router.callback_query(F.data.split(":")[0] == "ticket")
 async def tickets(callback: CallbackQuery):
-    ticket_id = callback.data.split(":")[1]
+    ticket_id = int(callback.data.split(":")[1])
     ticket = await TicketsDAO.get_one_or_none(id=ticket_id)
     if ticket:
         ticket_date = (ticket["create_timestamp"] + timedelta(hours=3)).strftime('%d-%m-%Y %H:%M')
@@ -430,6 +430,7 @@ async def upload(message: Message, state: FSMContext):
     await bot.download(document, destination=f"{os.getcwd()}/uploaded.xlsx")
     user_list = await get_xlsx()
     counter = 0
+
     for user in user_list:
         try:
             await UsersDAO.create(
