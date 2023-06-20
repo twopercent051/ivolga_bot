@@ -368,7 +368,7 @@ async def mailing(callback: CallbackQuery, state: FSMContext):
         await state.set_state(AdminFSM.home)
     else:
         text = "Введите сообщение. Оно будет отправлено всем пользователям. Чтобы вставить инлайн-клавишу со ссылкой" \
-               ", введите текст рассылки в формате:\n\n<i>Тект сообщения\n% Текст на кнопке & example.com</i>"
+               ", введите текст рассылки в формате:\n\n<i>Текст сообщения\n$TEXT Текст на кнопке $URL example.com</i>"
         kb = inline_kb.home_kb()
         await state.update_data(category=category)
         await state.set_state(AdminFSM.mailing)
@@ -378,10 +378,10 @@ async def mailing(callback: CallbackQuery, state: FSMContext):
 
 @router.message(F.text, AdminFSM.mailing)
 async def mailing(message: Message, state: FSMContext):
-    if len(message.text.split("%")) > 1:
-        user_text = message.html_text.split("%")[0].strip()
-        user_button_text = message.text.split("%")[1].split("&")[0].strip()
-        user_button_url = message.text.split("%")[1].split("&")[1].strip()
+    if len(message.text.split("$TEXT")) > 1:
+        user_text = message.html_text.split("$TEXT")[0].strip()
+        user_button_text = message.text.split("$TEXT")[1].split("$URL")[0].strip()
+        user_button_url = message.text.split("$TEXT")[1].split("$URL")[1].strip()
         user_kb = inline_kb.url_mailing_kb(text=user_button_text, url=user_button_url)
     else:
         user_text = message.html_text
@@ -400,7 +400,7 @@ async def mailing(message: Message, state: FSMContext):
         await message.answer(admin_text, reply_markup=admin_kb)
         await state.set_state(AdminFSM.home)
     except TelegramBadRequest:
-        text = "Вам необходимо указать ссылку после знака &"
+        text = "Вам необходимо указать ссылку после знака $URL"
         await message.answer(text)
 
 
