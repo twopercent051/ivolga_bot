@@ -368,7 +368,8 @@ async def mailing(callback: CallbackQuery, state: FSMContext):
         await state.set_state(AdminFSM.home)
     else:
         text = "Введите сообщение. Оно будет отправлено всем пользователям. Чтобы вставить инлайн-клавишу со ссылкой" \
-               ", введите текст рассылки в формате:\n\n<i>Текст сообщения\n$TEXT Текст на кнопке $URL example.com</i>"
+               ", введите текст рассылки в формате:\n\n<i>Текст сообщения\n<code>$TXT</code> Текст на кнопке " \
+               "<code>$URL</code> example.com</i>"
         kb = inline_kb.home_kb()
         await state.update_data(category=category)
         await state.set_state(AdminFSM.mailing)
