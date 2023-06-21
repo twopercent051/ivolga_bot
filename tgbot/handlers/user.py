@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 
 import pytz
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.filters import Command
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -25,6 +25,8 @@ async def user_start(message: Message):
     else:
         text = "ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ. ВЫ ХОТИТЕ ПОЛУЧАТЬ РАССЫЛКУ?"
     kb = UserInlineKeyboard.mailing_kb()
+    rmv_kb = ReplyKeyboardRemove()
+    await message.answer("Здравствуйте", reply_markup=rmv_kb)
     await message.answer(text, reply_markup=kb)
 
 
@@ -74,6 +76,8 @@ async def question_child(callback: CallbackQuery):
         else:
             text = "ВЫБЕРИТЕ ИНТЕРЕСУЮЩИЙ ВОПРОС"
         kb = UserInlineKeyboard.parent_polling_kb(polling_list=polling_list)
+    rmv_kb = ReplyKeyboardRemove()
+    await callback.message.answer("Здравствуйте", reply_markup=rmv_kb)
     await callback.message.answer(text, reply_markup=kb)
     await bot.answer_callback_query(callback.id)
 
