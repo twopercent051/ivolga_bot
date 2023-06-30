@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta
 
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.filters import Command
@@ -10,7 +10,7 @@ from aiogram.filters.state import StateFilter
 from aiogram.utils.markdown import hcode
 from sqlalchemy.exc import IntegrityError
 
-from create_bot import bot, config
+from create_bot import bot, config, logger
 from tgbot.filters.admin import AdminFilter
 from tgbot.keyboards.inline import AdminInlineKeyboard as inline_kb
 from tgbot.misc.states import AdminFSM
@@ -361,8 +361,10 @@ async def mailing(callback: CallbackQuery, state: FSMContext):
                     user_kb = None
                 await bot.send_message(chat_id=user_id, text=user_text, reply_markup=user_kb)
                 counter += 1
-            except TelegramBadRequest:
+            except (TelegramBadRequest, TelegramForbiddenError):
                 pass
+            except Exception as ex:
+                logger.warning(ex)
         text = f"Разослали {counter} из {len(user_list)} пользователей"
         kb = inline_kb.home_kb()
         await state.set_state(AdminFSM.home)
